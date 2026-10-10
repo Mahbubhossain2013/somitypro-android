@@ -1,0 +1,5 @@
+-keep class com.somitypro.app.** { *; }
+-keepattributes *Annotation*
+-keepattributes SourceFile,LineNumberTable
+-dontwarn okhttp3.**
+-dontwarn javax.annotation.**
