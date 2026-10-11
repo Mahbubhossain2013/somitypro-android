@@ -41,7 +41,7 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final String APP_URL = "https://somitypro.com";
+    private static final String APP_URL = "https://app.somitypro.com";
     private static final int PERMISSION_REQUEST_CODE = 100;
     private static final int FILE_CHOOSER_REQUEST_CODE = 101;
 
@@ -136,22 +136,13 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                String url = request.getUrl().toString();
-                // Open external links in browser, keep internal links in WebView
-                if (url.startsWith("https://somitypro.com") || url.startsWith("http://somitypro.com")) {
-                    return false; // load in webview
-                }
-                if (url.startsWith("mailto:") || url.startsWith("tel:") || url.startsWith("sms:")) {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    startActivity(intent);
-                    return true;
-                }
-                if (url.startsWith("http") || url.startsWith("https")) {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                    startActivity(intent);
-                    return true;
-                }
-                return false;
+                return handleUrlNavigation(view, request.getUrl().toString());
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleUrlNavigation(view, url);
             }
         });
 
@@ -185,6 +176,48 @@ public class MainActivity extends AppCompatActivity {
                 requestStoragePermissionAndDownload(url, contentDisposition, mimetype);
             }
         });
+    }
+
+    private boolean handleUrlNavigation(WebView view, String url) {
+        if (url == null) return false;
+
+        // If it's an APK download link, start download directly
+        if (url.toLowerCase().endsWith(".apk") || url.toLowerCase().contains("/somitypro.apk")) {
+            requestStoragePermissionAndDownload(url, null, "application/vnd.android.package-archive");
+            return true;
+        }
+
+        Uri uri = Uri.parse(url);
+        String host = uri.getHost();
+
+        // Keep somitypro.com, app.somitypro.com, and any *.somitypro.com inside WebView
+        if (host != null && (host.equalsIgnoreCase("somitypro.com") || host.toLowerCase().endsWith(".somitypro.com"))) {
+            return false; // load in webview
+        }
+
+        // Communication protocols (tel, mailto, sms, whatsapp)
+        if (url.startsWith("mailto:") || url.startsWith("tel:") || url.startsWith("sms:") || url.startsWith("whatsapp:")) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+            } catch (Exception e) {
+                Toast.makeText(this, "অ্যাপটি পাওয়া যায়নি", Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        }
+
+        // Open external links in device browser
+        if (url.startsWith("http://") || url.startsWith("https://")) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+            } catch (Exception e) {
+                return false;
+            }
+            return true;
+        }
+
+        return false;
     }
 
     private void requestStoragePermissionAndDownload(String url, String contentDisposition, String mimetype) {
