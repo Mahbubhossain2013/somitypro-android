@@ -76,6 +76,11 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        // Ensure SwipeRefreshLayout never hijacks scroll gestures when WebView is scrolled
+        swipeRefreshLayout.setOnChildScrollUpCallback((parent, child) -> {
+            return webView != null && (webView.canScrollVertically(-1) || webView.getScrollY() > 0);
+        });
+
         // Retry button
         TextView retryBtn = findViewById(R.id.retryBtn);
         retryBtn.setOnClickListener(v -> {
@@ -102,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        settings.setLoadWithOverviewMode(true);
+        settings.setLoadWithOverviewMode(false);
         settings.setUseWideViewPort(true);
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
@@ -113,6 +118,18 @@ public class MainActivity extends AppCompatActivity {
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setUserAgentString(settings.getUserAgentString() + " SomityProApp/1.0");
+
+        // Native smooth scroll behavior
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        webView.setVerticalScrollBarEnabled(true);
+        webView.setHorizontalScrollBarEnabled(false);
+
+        // Dynamically disable swipe refresh when scrolled down to prevent freeze
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                swipeRefreshLayout.setEnabled(scrollY <= 0 && !webView.canScrollVertically(-1));
+            });
+        }
 
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
